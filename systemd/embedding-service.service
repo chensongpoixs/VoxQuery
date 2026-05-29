@@ -1,0 +1,16 @@
+        [Unit]
+        Description=Knowledge Base embedding-service
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=chensong
+        WorkingDirectory=/mnt/d/Work/AI/AGIC/aigic
+        ExecStart=python /mnt/d/Work/AI/AGIC/aigic/services/embedding-service/app/main.py
+        Environment=CUDA_VISIBLE_DEVICES=0
+Environment=PORT=8002
+Restart=always
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target

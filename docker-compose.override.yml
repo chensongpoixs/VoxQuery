@@ -1,7 +1,7 @@
 # ============================================================
 # Docker Compose GPU 绑定覆盖文件
-# Profile: multi-gpu (4×RTX 4090 (24GB×4) 分布式部署，适合生产环境)
-# GPU: 4×NVIDIA RTX 4090
+# Profile: single-gpu (单张 RTX 5080 (16GB) 部署全部模型，适合开发测试环境)
+# GPU: 1×NVIDIA RTX 5080
 # 自动生成，请勿手动编辑
 # ============================================================
 
@@ -12,7 +12,7 @@ services:
           reservations:
             devices:
               - driver: nvidia
-                device_ids: ["0", "1"]
+                device_ids: ["0"]
                 capabilities: [gpu]
 
   embedding-service:
@@ -21,7 +21,7 @@ services:
           reservations:
             devices:
               - driver: nvidia
-                device_ids: ["2"]
+                device_ids: ["0"]
                 capabilities: [gpu]
 
   asr-service:
@@ -30,7 +30,7 @@ services:
           reservations:
             devices:
               - driver: nvidia
-                device_ids: ["3"]
+                device_ids: ["0"]
                 capabilities: [gpu]
 
   tts-service:
@@ -39,5 +39,5 @@ services:
           reservations:
             devices:
               - driver: nvidia
-                device_ids: ["3"]
+                device_ids: ["0"]
                 capabilities: [gpu]

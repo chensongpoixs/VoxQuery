@@ -93,7 +93,7 @@
 
 ```bash
 # 1. 进入项目
-cd aigic
+cd VoxQuery
 
 # 2. 生成部署配置（选择硬件 profile）
 python configs/generate_config.py --profile multi-gpu --mode docker --force

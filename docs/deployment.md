@@ -480,6 +480,230 @@ sudo systemctl start rag-service api-gateway
 sudo systemctl status 'kb-*'
 ```
 
+### 5.6 Conda 环境独立启动（开发调试推荐）
+
+每个服务可在独立终端中用 conda 环境手动启动，方便查看日志和调试。
+
+**环境准备：**
+
+```bash
+# 激活 conda 环境
+conda activate VoxQuery
+
+# 确认在项目根目录
+cd /mnt/d/Work/AI/AGIC/aigic
+
+# 加载环境变量（如已生成）
+test -f .env && set -a; source .env; set +a
+```
+
+**启动顺序：** 必须按依赖关系逐层启动，下层就绪后再启动上层。
+
+```
+第 1 层（基础设施）
+  ├── redis-server
+  └── chroma run
+
+第 2 层（模型推理）  依赖第 1 层
+  ├── llm-service          (GPU)
+  └── embedding-service    (GPU)
+
+第 3 层（语音服务）  依赖第 1 层
+  ├── asr-service          (GPU)
+  └── tts-service          (GPU)
+
+第 4 层（业务整合）  依赖第 2、3 层
+  └── rag-service          (CPU)
+
+第 5 层（对外服务）  依赖第 4 层
+  ├── api-gateway          (CPU)
+  └── frontend             (CPU)
+```
+
+#### 第 1 层：基础设施
+
+```bash
+# 终端 1: Redis
+conda activate VoxQuery
+redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru \
+    --daemonize yes --dir /tmp
+
+# 终端 2: ChromaDB
+conda activate VoxQuery
+chroma run --host 0.0.0.0 --port 8004 --path ./data/chroma
+# 就绪验证: curl http://localhost:8004/api/v1/heartbeat
+```
+
+#### 第 2 层：模型推理
+
+```bash
+# 终端 3: LLM Service
+# multi-gpu: CUDA_VISIBLE_DEVICES=0,1  /  single-gpu: CUDA_VISIBLE_DEVICES=0
+conda activate VoxQuery
+export CUDA_VISIBLE_DEVICES=0,1
+export MODEL_NAME="google/gemma-4-e2b-it"
+export TENSOR_PARALLEL_SIZE=2
+export QUANTIZATION="awq"
+export CONTEXT_WINDOW=8192
+export MAX_NUM_SEQS=4
+export GPU_MEMORY_UTILIZATION=0.90
+export KV_CACHE_DTYPE="fp8"
+export MODEL_PATH="./models/gemma3"
+export PORT=8001
+
+bash services/llm-service/scripts/start_vllm.sh
+# 首次启动加载模型约 2 分钟
+# 就绪验证: curl http://localhost:8001/health
+
+# 终端 4: Embedding Service
+# multi-gpu: CUDA_VISIBLE_DEVICES=2  /  single-gpu: CUDA_VISIBLE_DEVICES=0
+conda activate VoxQuery
+export CUDA_VISIBLE_DEVICES=2
+export MODEL_NAME="BAAI/bge-m3"
+export MAX_LENGTH=8192
+export BATCH_SIZE=32
+export PORT=8002
+
+cd services/embedding-service
+uvicorn app.main:app --host 0.0.0.0 --port 8002 --workers 1
+# 就绪验证: curl http://localhost:8002/health
+```
+
+#### 第 3 层：语音服务
+
+```bash
+# 终端 5: ASR Service
+# multi-gpu: CUDA_VISIBLE_DEVICES=3  /  single-gpu: CUDA_VISIBLE_DEVICES=0
+conda activate VoxQuery
+export CUDA_VISIBLE_DEVICES=3
+export MODEL_NAME="large-v3"
+export DEFAULT_LANGUAGE="zh"
+export VAD_THRESHOLD=0.5
+export PORT=8005
+
+cd /mnt/d/Work/AI/AGIC/aigic/services/asr-service
+uvicorn app.main:app --host 0.0.0.0 --port 8005 --log-level info
+# 就绪验证: curl http://localhost:8005/health
+
+# 终端 6: TTS Service（与 ASR 共享 GPU 3）
+conda activate VoxQuery
+export CUDA_VISIBLE_DEVICES=3
+export DEFAULT_VOICE="default"
+export SAMPLE_RATE=24000
+export PORT=8006
+
+cd /mnt/d/Work/AI/AGIC/aigic/services/tts-service
+uvicorn app.main:app --host 0.0.0.0 --port 8006 --log-level info
+# 就绪验证: curl http://localhost:8006/health
+```
+
+#### 第 4 层：业务整合
+
+```bash
+# 终端 7: RAG Service (CPU only)
+conda activate VoxQuery
+export EMBEDDING_SERVICE_URL="http://localhost:8002"
+export CHROMA_HOST="localhost"
+export CHROMA_PORT="8004"
+export CHROMA_COLLECTION="kb_knowledge"
+export TOP_K=5
+export RERANK_TOP_N=3
+export SIMILARITY_THRESHOLD=0.65
+export REDIS_HOST="localhost"
+export REDIS_PORT="6379"
+export RETRIEVAL_CACHE_TTL=3600
+export PORT=8003
+
+cd /mnt/d/Work/AI/AGIC/aigic/services/rag-service
+uvicorn app.main:app --host 0.0.0.0 --port 8003 --log-level info
+# 就绪验证: curl http://localhost:8003/health
+```
+
+#### 第 5 层：对外服务
+
+```bash
+# 终端 8: API Gateway (CPU only)
+conda activate VoxQuery
+export LLM_SERVICE_URL="http://localhost:8001"
+export EMBEDDING_SERVICE_URL="http://localhost:8002"
+export RAG_SERVICE_URL="http://localhost:8003"
+export ASR_SERVICE_URL="http://localhost:8005"
+export TTS_SERVICE_URL="http://localhost:8006"
+export REDIS_HOST="localhost"
+export REDIS_PORT="6379"
+export CONVERSATION_TTL=86400
+export ENVIRONMENT="development"
+export LOG_LEVEL="INFO"
+export JWT_SECRET_KEY="dev-secret-key"
+export PORT=8000
+
+cd /mnt/d/Work/AI/AGIC/aigic
+uvicorn services.api-gateway.app.main:app --host 0.0.0.0 --port 8000 --workers 4 --log-level info
+# 就绪验证: curl http://localhost:8000/health
+
+# 终端 9: Frontend
+conda activate VoxQuery
+export NEXT_PUBLIC_API_URL="http://localhost:8000"
+export NEXT_PUBLIC_WS_URL="ws://localhost:8000"
+
+cd /mnt/d/Work/AI/AGIC/aigic/frontend
+npm run dev
+# 访问: http://localhost:3000
+```
+
+#### 验证
+
+```bash
+# 全链路健康检查
+for port in 8000 8001 8002 8003 8005 8006; do
+    echo -n "Port $port: "
+    curl -s -o /dev/null -w "%{http_code}" http://localhost:$port/health 2>/dev/null || echo "DOWN"
+done
+
+# 测试问答
+curl -X POST http://localhost:8000/api/v1/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "你好"}'
+```
+
+#### 单卡 RTX 5080 (single-gpu) 注意事项
+
+显存仅 16GB，4 个模型共用 GPU 0，参数需收紧：
+
+```bash
+# 所有服务统一绑定 GPU 0
+export CUDA_VISIBLE_DEVICES=0
+
+# LLM: 使用小模型 + 降参
+export MODEL_NAME="google/gemma-4-e2b-it"
+export TENSOR_PARALLEL_SIZE=1
+export QUANTIZATION="int4"
+export CONTEXT_WINDOW=2048
+export MAX_NUM_SEQS=1
+export GPU_MEMORY_UTILIZATION=0.75
+
+# Embedding: 减小批处理
+export BATCH_SIZE=8
+
+# 启动顺序: 先大后小
+# LLM → Embedding → ASR → TTS
+# 如遇 OOM, 按相反顺序逐个停掉排查
+```
+
+#### 服务速查表
+
+| 服务 | 端口 | GPU (multi) | GPU (single) | 命令 |
+|------|------|-------------|---------------|------|
+| Redis | 6379 | — | — | `redis-server --daemonize yes` |
+| ChromaDB | 8004 | — | — | `chroma run --port 8004` |
+| LLM | 8001 | 0,1 | 0 | `bash services/llm-service/scripts/start_vllm.sh` |
+| Embedding | 8002 | 2 | 0 | `cd services/embedding-service && uvicorn app.main:app` |
+| ASR | 8005 | 3 | 0 | `cd services/asr-service && uvicorn app.main:app --port 8005` |
+| TTS | 8006 | 3 | 0 | `cd services/tts-service && uvicorn app.main:app --port 8006` |
+| RAG | 8003 | — | — | `cd services/rag-service && uvicorn app.main:app --port 8003` |
+| API Gateway | 8000 | — | — | `uvicorn services.api-gateway.app.main:app --port 8000` |
+| Frontend | 3000 | — | — | `cd frontend && npm run dev` |
+
 ---
 
 ## 6. Nginx 反向代理（生产环境）

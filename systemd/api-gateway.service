@@ -1,0 +1,15 @@
+        [Unit]
+        Description=Knowledge Base api-gateway
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=chensong
+        WorkingDirectory=/mnt/d/Work/AI/AGIC/aigic
+        ExecStart=uvicorn services.api-gateway.app.main:app --host 0.0.0.0 --port 8000
+        Environment=PORT=8000
+Restart=always
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target

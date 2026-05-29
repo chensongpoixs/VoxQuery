@@ -1,0 +1,16 @@
+        [Unit]
+        Description=Knowledge Base llm-service
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=chensong
+        WorkingDirectory=/mnt/d/Work/AI/AGIC/aigic
+        ExecStart=bash /mnt/d/Work/AI/AGIC/aigic/services/llm-service/scripts/start_vllm.sh
+        Environment=CUDA_VISIBLE_DEVICES=0
+Environment=PORT=8001
+Restart=always
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target

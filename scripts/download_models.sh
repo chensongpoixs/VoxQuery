@@ -116,11 +116,11 @@ snapshot_download('BAAI/bge-m3', cache_dir='$target_dir')
 print('BGE-M3 下载完成')
 " || {
             echo "[WARN] ModelScope 下载失败，回退至 HF Mirror"
-            HF_ENDPOINT=https://hf-mirror.com huggingface-cli download BAAI/bge-m3 --local-dir "$target_dir"
+            HF_ENDPOINT=https://hf-mirror.com hf download BAAI/bge-m3 --local-dir "$target_dir"
         }
     else
         echo "[INFO] 从 HF Mirror 下载..."
-        huggingface-cli download BAAI/bge-m3 --local-dir "$target_dir"
+        hf download BAAI/bge-m3 --local-dir "$target_dir"
     fi
 
     echo "[OK] BGE-M3 下载完成"
@@ -148,22 +148,9 @@ download_llm() {
     mkdir -p "$target_dir"
 
     if is_gemma4_e2b; then
-        # Gemma-4 E2B: 优先从 HuggingFace 下载（较小）
+        # Gemma-4 E2B: ModelScope 暂未收录，直接从 HuggingFace 下载
         echo "[INFO] 下载 Gemma-4 E2B (约 2GB)..."
-        if [ "${USE_MODELSCOPE:-false}" = "true" ]; then
-            echo "[INFO] 从 ModelScope 下载..."
-            pip install modelscope -q 2>/dev/null || true
-            python3 -c "
-from modelscope import snapshot_download
-snapshot_download('LLM-Research/gemma-4-e2b-it', cache_dir='$target_dir')
-print('Gemma-4 E2B 下载完成')
-" || {
-                echo "[WARN] ModelScope 下载失败，回退至 HF Mirror"
-                HF_ENDPOINT=https://hf-mirror.com huggingface-cli download google/gemma-4-e2b-it --local-dir "$target_dir"
-            }
-        else
-            HF_ENDPOINT=https://hf-mirror.com huggingface-cli download google/gemma-4-e2b-it --local-dir "$target_dir"
-        fi
+        HF_ENDPOINT=https://hf-mirror.com hf download google/gemma-4-e2b-it --local-dir "$target_dir"
     else
         # Gemma-3 27B: 大模型，检查磁盘空间
         local available_gb=$(df -BG "$MODELS_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/G//' || echo "0")
@@ -183,11 +170,11 @@ snapshot_download('LLM-Research/gemma-3-27b-it', cache_dir='$target_dir')
 print('Gemma-3 下载完成')
 " || {
                 echo "[WARN] ModelScope 下载失败，回退至 HF Mirror"
-                HF_ENDPOINT=https://hf-mirror.com huggingface-cli download google/gemma-3-27b-it --local-dir "$target_dir"
+                HF_ENDPOINT=https://hf-mirror.com hf download google/gemma-3-27b-it --local-dir "$target_dir"
             }
         else
             echo "[INFO] 从 HF Mirror 下载 (约需 30-60 分钟)..."
-            huggingface-cli download google/gemma-3-27b-it --local-dir "$target_dir"
+            hf download google/gemma-3-27b-it --local-dir "$target_dir"
         fi
     fi
 

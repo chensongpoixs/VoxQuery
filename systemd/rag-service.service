@@ -1,0 +1,15 @@
+        [Unit]
+        Description=Knowledge Base rag-service
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=chensong
+        WorkingDirectory=/mnt/d/Work/AI/AGIC/aigic
+        ExecStart=python /mnt/d/Work/AI/AGIC/aigic/services/rag-service/app/main.py
+        Environment=PORT=8003
+Restart=always
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target

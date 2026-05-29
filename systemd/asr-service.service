@@ -1,0 +1,16 @@
+        [Unit]
+        Description=Knowledge Base asr-service
+        After=network.target
+
+        [Service]
+        Type=simple
+        User=chensong
+        WorkingDirectory=/mnt/d/Work/AI/AGIC/aigic
+        ExecStart=python /mnt/d/Work/AI/AGIC/aigic/services/asr-service/app/main.py
+        Environment=CUDA_VISIBLE_DEVICES=0
+Environment=PORT=8005
+Restart=always
+        RestartSec=10
+
+        [Install]
+        WantedBy=multi-user.target
