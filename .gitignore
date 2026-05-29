@@ -1,0 +1,54 @@
+# 环境配置
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# 模型文件（体积过大）
+models/
+*.bin
+*.safetensors
+*.pt
+*.pth
+
+# 前端
+node_modules/
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+logs/
+
+# 知识库状态
+.kb_state.json
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# Docker
+.docker/
+
+# 测试
+.coverage
+htmlcov/
+.pytest_cache/
