@@ -62,11 +62,21 @@
 
 ## GPU 分配
 
+### Multi-GPU Profile (4×RTX 4090)
+
 | GPU | 服务 | 模型 | 显存占用 |
 |-----|------|------|---------|
 | GPU 0,1 | LLM Service | Gemma-3 27B (TP=2) | ~22GB ×2 |
 | GPU 2 | Embedding Service | BGE-M3 | ~6GB |
 | GPU 3 | ASR + TTS | Whisper-v3 + CosyVoice2 | ~4GB + ~4GB |
+
+### Single-GPU Profile (1×RTX 5080)
+
+| GPU | 服务 | 模型 | 显存占用 |
+|-----|------|------|---------|
+| GPU 0 | 全部服务 | Gemma-4 E2B + BGE-M3 + Whisper-v3 + CosyVoice2 | ~15.5GB / 24GB |
+
+> 通过 `configs/profiles/*.yaml` 集中管理。运行 `make config-list` 查看所有可用配置。
 
 ## 快速开始
 
@@ -74,20 +84,26 @@
 
 - Ubuntu 22.04+ / WSL2
 - NVIDIA Driver 535+ + CUDA 12.4
-- Docker 24+ + Docker Compose 2.20+
-- NVIDIA Container Toolkit
-- 4×RTX 4090 (24GB) 或等效 GPU
+- Docker 24+ + Docker Compose 2.20+ (Docker 模式)
+- Python 3.11+ (原生模式)
+- NVIDIA Container Toolkit (Docker 模式)
+- 1×RTX 5080 (24GB) 或 4×RTX 4090 (24GB×4)
 
 ### 一键部署
 
 ```bash
-# 1. 克隆项目
+# 1. 进入项目
 cd aigic
 
-# 2. 一键部署（检查依赖 → 初始化 → 下载模型 → 构建 → 启动 → 导入示例数据）
+# 2. 生成部署配置（选择硬件 profile）
+python configs/generate_config.py --profile multi-gpu --mode docker --force
+# 单卡环境:
+# python configs/generate_config.py --profile single-gpu --mode docker --force
+
+# 3. 一键部署
 bash scripts/setup.sh all
 
-# 3. 访问
+# 4. 访问
 # API 文档: http://localhost:8000/docs
 # 前端界面: http://localhost:3000
 ```
@@ -95,17 +111,15 @@ bash scripts/setup.sh all
 ### 分步部署
 
 ```bash
-# Step 1: 环境初始化
-make setup
+# Step 1: 生成配置 + 环境初始化
+make config  # 默认 multi-gpu / docker
 make init-dirs
 
-# Step 2: 下载模型（自动选择国内镜像: ModelScope > HF Mirror）
+# Step 2: 下载模型（根据 profile 自动选择，自动选择国内镜像: ModelScope > HF Mirror）
 make download-models
-# 或下载指定模型:
-make download-model-embedding   # BGE-M3 (~2GB)
-make download-model-llm         # Gemma-3 (~50GB)
-make download-model-whisper     # Whisper (~3GB)
-make download-model-tts         # CosyVoice2 (~2GB)
+# 或指定 profile:
+bash scripts/download_models.sh --profile single-gpu all   # ~9GB
+bash scripts/download_models.sh --profile multi-gpu all    # ~57GB
 
 # Step 3: 构建并启动
 make build
@@ -120,6 +134,23 @@ make kb-ingest
 # Step 5: 检查状态
 make status
 make health
+```
+
+### 原生部署 (Bare Metal)
+
+```bash
+# 生成原生部署配置
+python configs/generate_config.py --profile multi-gpu --mode native --force
+
+# 下载模型
+make download-models
+
+# 一键启动
+make native-start
+
+# 查看状态
+make native-status
+make native-health
 ```
 
 ### 模型下载（国内镜像）
@@ -145,9 +176,19 @@ make download-models
 ```
 aigic/
 ├── README.md                        # 项目文档
-├── docker-compose.yml               # 8 个服务容器编排
-├── .env.example                     # 60+ 环境变量模板
-├── Makefile                         # 30+ 常用命令
+├── docker-compose.yml               # 8 个服务容器编排（基础模板）
+├── docker-compose.override.yml      # GPU 绑定覆盖（自动生成）
+├── .env                             # 环境变量（自动生成）
+├── .env.example                     # Profile 选择器模板
+├── Makefile                         # 40+ 常用命令
+│
+├── configs/                         # 部署配置系统（NEW）
+│   ├── profiles/
+│   │   ├── single-gpu.yaml          # 单卡 RTX 5080 配置
+│   │   └── multi-gpu.yaml           # 4×RTX 4090 配置
+│   ├── profile_schema.py            # Pydantic 数据模型
+│   ├── profile_loader.py            # 配置生成引擎
+│   └── generate_config.py           # CLI 工具
 │
 ├── docs/                            # 文档
 │   ├── architecture.md              # 架构设计文档
@@ -158,19 +199,13 @@ aigic/
 │
 ├── services/                        # 微服务层 (6 个服务)
 │   ├── api-gateway/                 # API 网关 (FastAPI)
-│   │   ├── app/routers/             # chat / voice / knowledge / admin
-│   │   ├── app/services/            # LLM/RAG/ASR/TTS 客户端 + 对话管理
-│   │   └── app/middleware/           # JWT 鉴权 + 请求日志
-│   ├── llm-service/                 # LLM 推理 (Gemma-3 + vLLM)
+│   ├── llm-service/                 # LLM 推理 (Gemma-3/vLLM)
 │   ├── embedding-service/           # Embedding (BGE-M3)
 │   ├── rag-service/                 # RAG 检索增强
-│   │   ├── app/retrieval/           # 检索/重排序/同义词
-│   │   └── app/indexing/            # 分段引擎/入库流水线
 │   ├── asr-service/                 # 语音识别 (Whisper)
 │   └── tts-service/                 # 语音合成 (CosyVoice2)
 │
 ├── frontend/                        # Web UI (Next.js 14)
-│   └── src/components/              # Chat/Voice/Knowledge/Layout
 │
 ├── knowledge-base/                  # 知识库管理工具
 │   ├── dicts/                       # 行业术语词典 + 同义词映射
@@ -179,9 +214,13 @@ aigic/
 │
 ├── scripts/                         # 运维脚本
 │   ├── setup.sh                     # 一键部署
-│   ├── download_models.sh           # 模型下载 (国内镜像)
+│   ├── download_models.sh           # 模型下载 (国内镜像 + Profile 感知)
 │   ├── health_check.sh              # 健康检查
-│   └── benchmark.sh                 # 性能压测
+│   ├── benchmark.sh                 # 性能压测
+│   └── native/                      # 原生部署脚本（NEW）
+│       ├── start_all.sh             # 原生启动
+│       ├── stop_all.sh              # 原生停止
+│       └── health_check.sh          # 原生健康检查
 │
 └── tests/                           # 测试
     ├── test_rag_flow.py             # RAG 流程测试 (12 用例)
@@ -281,6 +320,8 @@ python knowledge-base/scripts/update.py --docs-dir /path/to/docs
 
 ```bash
 make help          # 显示所有命令
+make config        # 从 profile 生成配置
+make config-list   # 列出所有可用 profile
 make build         # 构建镜像
 make start         # 启动所有服务
 make stop          # 停止所有服务
@@ -292,6 +333,12 @@ make test          # 运行测试
 make kb-ingest     # 导入知识库
 make benchmark     # 性能测试
 make clean         # 清理容器和卷
+
+# 原生部署
+make native-start       # 启动所有原生服务
+make native-stop        # 停止所有原生服务
+make native-status      # 查看原生服务状态
+make native-health      # 原生模式健康检查
 ```
 
 ## 性能目标

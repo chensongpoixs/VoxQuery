@@ -1,0 +1,43 @@
+# ============================================================
+# Docker Compose GPU 绑定覆盖文件
+# Profile: multi-gpu (4×RTX 4090 (24GB×4) 分布式部署，适合生产环境)
+# GPU: 4×NVIDIA RTX 4090
+# 自动生成，请勿手动编辑
+# ============================================================
+
+services:
+  llm-service:
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                device_ids: ["0", "1"]
+                capabilities: [gpu]
+
+  embedding-service:
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                device_ids: ["2"]
+                capabilities: [gpu]
+
+  asr-service:
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                device_ids: ["3"]
+                capabilities: [gpu]
+
+  tts-service:
+      deploy:
+        resources:
+          reservations:
+            devices:
+              - driver: nvidia
+                device_ids: ["3"]
+                capabilities: [gpu]

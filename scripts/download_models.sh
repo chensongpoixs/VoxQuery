@@ -8,11 +8,13 @@
 #   3. HuggingFace (huggingface.co) —— 原始站（需代理）
 #
 # 用法:
-#   bash scripts/download_models.sh all          # 下载所有模型
-#   bash scripts/download_models.sh embedding    # 仅下载 BGE-M3
-#   bash scripts/download_models.sh llm          # 仅下载 Gemma-3
-#   bash scripts/download_models.sh asr          # 仅下载 Whisper
-#   bash scripts/download_models.sh tts          # 仅下载 CosyVoice2
+#   bash scripts/download_models.sh all                          # 下载所有模型（根据 .env 中的 profile）
+#   bash scripts/download_models.sh --profile single-gpu all     # 单卡 profile 模型
+#   bash scripts/download_models.sh --profile multi-gpu all      # 多卡 profile 模型
+#   bash scripts/download_models.sh embedding                    # 仅下载 BGE-M3
+#   bash scripts/download_models.sh llm                          # 仅下载 LLM
+#   bash scripts/download_models.sh asr                          # 仅下载 Whisper
+#   bash scripts/download_models.sh tts                          # 仅下载 CosyVoice2
 # ============================================================
 set -e
 
@@ -20,10 +22,54 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 MODELS_DIR="${MODELS_DIR:-$PROJECT_DIR/models}"
 
+# ---------- 参数解析 ----------
+PROFILE=""
+ACTION=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --profile|-p)
+            PROFILE="$2"
+            shift 2
+            ;;
+        *)
+            ACTION="${ACTION:-$1}"
+            shift
+            ;;
+    esac
+done
+ACTION="${ACTION:-all}"
+
 # 加载 .env 配置
 if [ -f "$PROJECT_DIR/.env" ]; then
     set -a; source "$PROJECT_DIR/.env"; set +a
 fi
+
+# 如果指定了 --profile，根据 profile 确定 LLM 模型
+LLM_MODEL="google/gemma-3-27b-it"
+LLM_DIR="gemma3"
+if [ -n "$PROFILE" ]; then
+    PROFILE_FILE="$PROJECT_DIR/configs/profiles/${PROFILE}.yaml"
+    if [ ! -f "$PROFILE_FILE" ]; then
+        echo "[ERROR] Profile 文件不存在: $PROFILE_FILE"
+        exit 1
+    fi
+    # 从 YAML 提取 llm.model 字段
+    LLM_MODEL=$(python3 -c "
+import yaml
+with open('$PROFILE_FILE') as f:
+    p = yaml.safe_load(f)
+print(p['services']['llm']['model'])
+" 2>/dev/null || echo "google/gemma-3-27b-it")
+    echo "[INFO] 根据 profile '$PROFILE' 加载 LLM 模型: $LLM_MODEL"
+else
+    # 尝试从环境变量获取
+    LLM_MODEL="${LLM_MODEL_NAME:-google/gemma-3-27b-it}"
+fi
+
+# 判断是否是 Gemma-4 E2B
+is_gemma4_e2b() {
+    [[ "$LLM_MODEL" == *"gemma-4-e2b"* ]]
+}
 
 # ---------- 镜像源配置 ----------
 HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
@@ -80,47 +126,77 @@ print('BGE-M3 下载完成')
     echo "[OK] BGE-M3 下载完成"
 }
 
-download_gemma3() {
+download_llm() {
     local target_dir="$MODELS_DIR/gemma3"
-    echo "============================================"
-    echo " 下载 Gemma-3 27B 模型 (~50GB)"
-    echo "  注意: 请预留至少 60GB 磁盘空间"
-    echo "============================================"
+
+    if is_gemma4_e2b; then
+        echo "============================================"
+        echo " 下载 Gemma-4 E2B 模型 (~2GB)"
+        echo "============================================"
+    else
+        echo "============================================"
+        echo " 下载 Gemma-3 27B 模型 (~50GB)"
+        echo "  注意: 请预留至少 60GB 磁盘空间"
+        echo "============================================"
+    fi
 
     if [ -f "$target_dir/config.json" ] 2>/dev/null; then
-        echo "[SKIP] Gemma-3 已存在: $target_dir"
+        echo "[SKIP] LLM 模型已存在: $target_dir"
         return 0
     fi
 
     mkdir -p "$target_dir"
 
-    # 检查磁盘空间
-    local available_gb=$(df -BG "$MODELS_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/G//' || echo "0")
-    if [ "${available_gb:-0}" -lt 60 ]; then
-        echo "[WARN] 可用磁盘空间不足 60GB，当前可用: ${available_gb}GB"
-        echo "       是否继续? (y/N)"
-        read -r confirm
-        [ "$confirm" != "y" ] && return 1
-    fi
-
-    if [ "${USE_MODELSCOPE:-false}" = "true" ]; then
-        echo "[INFO] 从 ModelScope 下载 (使用 modelscope CLI)..."
-        pip install modelscope -q 2>/dev/null || true
-        python3 -c "
+    if is_gemma4_e2b; then
+        # Gemma-4 E2B: 优先从 HuggingFace 下载（较小）
+        echo "[INFO] 下载 Gemma-4 E2B (约 2GB)..."
+        if [ "${USE_MODELSCOPE:-false}" = "true" ]; then
+            echo "[INFO] 从 ModelScope 下载..."
+            pip install modelscope -q 2>/dev/null || true
+            python3 -c "
 from modelscope import snapshot_download
-# Gemma-3 27B 在 ModelScope 上的路径
+snapshot_download('LLM-Research/gemma-4-e2b-it', cache_dir='$target_dir')
+print('Gemma-4 E2B 下载完成')
+" || {
+                echo "[WARN] ModelScope 下载失败，回退至 HF Mirror"
+                HF_ENDPOINT=https://hf-mirror.com huggingface-cli download google/gemma-4-e2b-it --local-dir "$target_dir"
+            }
+        else
+            HF_ENDPOINT=https://hf-mirror.com huggingface-cli download google/gemma-4-e2b-it --local-dir "$target_dir"
+        fi
+    else
+        # Gemma-3 27B: 大模型，检查磁盘空间
+        local available_gb=$(df -BG "$MODELS_DIR" 2>/dev/null | tail -1 | awk '{print $4}' | sed 's/G//' || echo "0")
+        if [ "${available_gb:-0}" -lt 60 ]; then
+            echo "[WARN] 可用磁盘空间不足 60GB，当前可用: ${available_gb}GB"
+            echo "       是否继续? (y/N)"
+            read -r confirm
+            [ "$confirm" != "y" ] && return 1
+        fi
+
+        if [ "${USE_MODELSCOPE:-false}" = "true" ]; then
+            echo "[INFO] 从 ModelScope 下载 (使用 modelscope CLI)..."
+            pip install modelscope -q 2>/dev/null || true
+            python3 -c "
+from modelscope import snapshot_download
 snapshot_download('LLM-Research/gemma-3-27b-it', cache_dir='$target_dir')
 print('Gemma-3 下载完成')
 " || {
-            echo "[WARN] ModelScope 下载失败，回退至 HF Mirror"
-            HF_ENDPOINT=https://hf-mirror.com huggingface-cli download google/gemma-3-27b-it --local-dir "$target_dir"
-        }
-    else
-        echo "[INFO] 从 HF Mirror 下载 (约需 30-60 分钟)..."
-        huggingface-cli download google/gemma-3-27b-it --local-dir "$target_dir"
+                echo "[WARN] ModelScope 下载失败，回退至 HF Mirror"
+                HF_ENDPOINT=https://hf-mirror.com huggingface-cli download google/gemma-3-27b-it --local-dir "$target_dir"
+            }
+        else
+            echo "[INFO] 从 HF Mirror 下载 (约需 30-60 分钟)..."
+            huggingface-cli download google/gemma-3-27b-it --local-dir "$target_dir"
+        fi
     fi
 
-    echo "[OK] Gemma-3 下载完成"
+    echo "[OK] LLM 模型下载完成"
+}
+
+# 兼容旧函数名
+download_gemma3() {
+    download_llm
 }
 
 download_whisper() {
@@ -199,17 +275,24 @@ print('CosyVoice2 下载完成')
 download_all() {
     echo "============================================"
     echo " 智能知识库 —— 全部模型下载"
-    echo " 预计总大小: ~57GB"
-    echo " 预计时间: 30-90 分钟（取决于网络速度）"
+    if is_gemma4_e2b; then
+        echo " Profile: single-gpu (Gemma-4 E2B)"
+        echo " 预计总大小: ~9GB"
+        echo " 预计时间: 5-20 分钟"
+    else
+        echo " Profile: multi-gpu (Gemma-3 27B)"
+        echo " 预计总大小: ~57GB"
+        echo " 预计时间: 30-90 分钟（取决于网络速度）"
+    fi
     echo "============================================"
     echo ""
 
     detect_best_source
 
-    download_bge_m3      # ~2GB,  2-5 分钟
-    download_whisper     # ~3GB,  3-8 分钟
-    download_cosyvoice2  # ~2GB,  2-5 分钟
-    download_gemma3      # ~50GB, 30-60 分钟
+    download_bge_m3      # ~2GB
+    download_whisper     # ~3GB
+    download_cosyvoice2  # ~2GB
+    download_llm         # ~2GB (E2B) 或 ~50GB (Gemma-3)
 
     echo ""
     echo "============================================"
@@ -224,7 +307,7 @@ download_all() {
 }
 
 # ---------- 主入口 ----------
-case "${1:-all}" in
+case "${ACTION:-all}" in
     all)
         download_all
         ;;
@@ -234,7 +317,7 @@ case "${1:-all}" in
         ;;
     llm)
         detect_best_source
-        download_gemma3
+        download_llm
         ;;
     asr)
         detect_best_source
@@ -248,14 +331,25 @@ case "${1:-all}" in
         detect_best_source
         ;;
     *)
-        echo "用法: $0 {all|embedding|llm|asr|tts|detect}"
+        echo "用法: $0 [--profile <name>] {all|embedding|llm|asr|tts|detect}"
         echo ""
-        echo "  all       - 下载所有模型 (~57GB)"
+        echo "选项:"
+        echo "  --profile, -p  指定硬件 profile (single-gpu | multi-gpu)"
+        echo ""
+        echo "子命令:"
+        echo "  all       - 下载所有模型"
+        echo "             single-gpu: ~9GB (Gemma-4 E2B)"
+        echo "             multi-gpu:  ~57GB (Gemma-3 27B)"
         echo "  embedding - 下载 BGE-M3 (~2GB)"
-        echo "  llm       - 下载 Gemma-3 27B (~50GB)"
+        echo "  llm       - 下载 LLM 模型 (根据 profile)"
         echo "  asr       - 下载 Whisper-large-v3 (~3GB)"
         echo "  tts       - 下载 CosyVoice2 (~2GB)"
         echo "  detect    - 仅检测最佳镜像源"
+        echo ""
+        echo "示例:"
+        echo "  $0 --profile single-gpu all"
+        echo "  $0 --profile multi-gpu llm"
+        echo "  $0 embedding"
         echo ""
         echo "国内镜像源:"
         echo "  ModelScope: https://modelscope.cn"

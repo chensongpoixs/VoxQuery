@@ -1,15 +1,36 @@
-.PHONY: help setup build start stop restart logs clean test lint
+.PHONY: help setup config build start stop restart logs clean test lint native-start native-stop native-status native-logs
 
 # 默认目标
 help: ## 显示帮助信息
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-22s\033[0m %s\n", $$1, $$2}'
+
+# ========== 配置生成 ==========
+
+config: ## 从 profile 生成部署配置（.env + docker-compose.override.yml）
+	python configs/generate_config.py \
+		--profile $(HARDWARE_PROFILE) \
+		--mode $(DEPLOYMENT_MODE) \
+		--force
+	@echo ""
+	@echo "配置文件已生成: .env + docker-compose.override.yml"
+
+config-docker: ## 生成 Docker 部署配置（multi-gpu）
+	python configs/generate_config.py --profile multi-gpu --mode docker --force
+
+config-native: ## 生成原生部署配置（multi-gpu）
+	python configs/generate_config.py --profile multi-gpu --mode native --force
+
+config-single: ## 生成单卡 Docker 部署配置
+	python configs/generate_config.py --profile single-gpu --mode docker --force
+
+config-list: ## 列出所有可用 profile
+	python configs/generate_config.py --list
 
 # ========== 环境初始化 ==========
 
-setup: ## 初始化环境（复制 .env 文件）
-	@test -f .env || cp .env.example .env
-	@echo "环境初始化完成，请检查 .env 文件中的配置"
+setup: config ## 初始化环境（生成配置文件）
+	@echo "环境初始化完成"
 
 init-dirs: ## 创建必要的目录
 	mkdir -p models/gemma3 models/bge-m3 models/whisper models/cosyvoice2
@@ -151,3 +172,30 @@ download-model-tts: ## 仅下载 CosyVoice2 模型
 
 detect-mirror: ## 检测最佳模型下载镜像源
 	bash scripts/download_models.sh detect
+
+# ========== 原生部署 ==========
+
+native-start: ## 原生模式启动所有服务
+	bash scripts/native/start_all.sh all
+
+native-start-core: ## 原生模式启动核心服务
+	bash scripts/native/start_all.sh core
+
+native-start-voice: ## 原生模式启动语音服务
+	bash scripts/native/start_all.sh voice
+
+native-start-api: ## 原生模式启动 API + 前端
+	bash scripts/native/start_all.sh api
+
+native-stop: ## 原生模式停止所有服务
+	bash scripts/native/stop_all.sh
+
+native-status: ## 原生模式查看服务状态
+	bash scripts/native/start_all.sh status
+
+native-logs: ## 原生模式查看日志
+	@echo "=== LLM Service ===" && tail -30 /tmp/llm-service.log 2>/dev/null || echo "无日志"
+	@echo "=== API Gateway ===" && tail -30 /tmp/api-gateway.log 2>/dev/null || echo "无日志"
+
+native-health: ## 原生模式健康检查
+	bash scripts/native/health_check.sh

@@ -43,11 +43,16 @@ check_dependencies() {
 init_environment() {
     log_info "初始化环境..."
 
+    # 从 profile 生成配置（默认 multi-gpu / docker）
+    local profile="${HARDWARE_PROFILE:-multi-gpu}"
+    local mode="${DEPLOYMENT_MODE:-docker}"
+
     if [ ! -f "$PROJECT_DIR/.env" ]; then
-        cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
-        log_info ".env 文件已创建，请根据需要修改配置"
+        log_info "从 profile '${profile}' 生成 .env 配置..."
+        python3 "$PROJECT_DIR/configs/generate_config.py" \
+            --profile "$profile" --mode "$mode" --force
     else
-        log_info ".env 文件已存在"
+        log_info ".env 文件已存在，跳过生成"
     fi
 
     # 创建必要目录
