@@ -66,7 +66,7 @@ export default function Sidebar({
 
       {/* 底部信息 */}
       <div className="p-3 border-t text-xs text-gray-400">
-        <p>能源智库 v1.0</p>
+        <p>智能知识库 v1.0</p>
         <p>私有化部署</p>
       </div>
     </div>

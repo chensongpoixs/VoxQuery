@@ -16,7 +16,7 @@ class TestSettings:
 
     def test_default_settings(self):
         settings = Settings()
-        assert settings.project_name == "Energy KB Q&A System"
+        assert settings.project_name == "KB Q&A System"
         assert settings.port == 8000
 
     def test_environment(self):
@@ -59,22 +59,22 @@ class TestConversationManager:
         mgr = ConversationManager(settings)
         conv_id = mgr.create_conversation()
 
-        mgr.add_message(conv_id, "user", "变压器的巡检项目有哪些？")
-        mgr.add_message(conv_id, "assistant", "日常巡检包括油温检查、油位检查等。")
+        mgr.add_message(conv_id, "user", "服务器的巡检项目有哪些？")
+        mgr.add_message(conv_id, "assistant", "日常巡检包括温度检查、风扇状态检查等。")
 
         history = mgr.get_history(conv_id)
         assert len(history) == 2
         assert history[0]["role"] == "user"
         assert history[1]["role"] == "assistant"
-        assert "油温" in history[1]["content"]
+        assert "温度" in history[1]["content"]
 
     def test_conversation_info(self):
         settings = Settings(redis_host="localhost", redis_port=6379)
         mgr = ConversationManager(settings)
-        conv_id = mgr.create_conversation("设备维护")
+        conv_id = mgr.create_conversation("IT运维")
 
         info = mgr.get_conversation_info(conv_id)
-        assert info["title"] == "设备维护"
+        assert info["title"] == "IT运维"
         assert info["message_count"] == 0
 
     def test_coreference_resolution(self):
@@ -83,12 +83,12 @@ class TestConversationManager:
         mgr = ConversationManager(settings)
         conv_id = mgr.create_conversation()
 
-        mgr.add_message(conv_id, "user", "变压器的额定容量是多少？")
-        mgr.add_message(conv_id, "assistant", "SZ11-50000/110型变压器的额定容量为50000kVA。")
+        mgr.add_message(conv_id, "user", "SRV-20245服务器的配置参数是多少？")
+        mgr.add_message(conv_id, "assistant", "SRV-20245服务器的CPU为Intel Xeon Gold 6338N 2.2GHz，内存512GB。")
 
         # 省略式提问
         resolved = mgr.resolve_coreference(conv_id, "它的巡检项目有哪些？")
-        assert "变压器" in resolved or "SZ11" in resolved or "50000kVA" in resolved
+        assert "服务器" in resolved or "SRV" in resolved or "512GB" in resolved
 
     def test_delete_conversation(self):
         settings = Settings(redis_host="localhost", redis_port=6379)

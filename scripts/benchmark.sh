@@ -9,16 +9,16 @@ API_URL="${API_URL:-http://localhost:8000}"
 RESULTS_FILE="benchmark_results_$(date +%Y%m%d_%H%M%S).txt"
 
 echo "============================================"
-echo " 能源知识库系统 - 性能基准测试"
+echo " 知识库系统 - 性能基准测试"
 echo " API: $API_URL"
 echo "============================================"
 
 TEST_QUERIES=(
-    "变压器的日常巡检项目有哪些？"
-    "110kV的安全距离是多少？"
-    "SF6断路器的额定压力是多少？"
-    "倒闸操作的正确步骤是什么？"
-    "变电站设备着火应该怎么处理？"
+    "服务器的日常巡检项目有哪些？"
+    "数据中心的访问权限如何申请？"
+    "防火墙的额定吞吐量是多少？"
+    "应急响应的标准流程是什么？"
+    "信息安全事件应该怎么处理？"
 )
 
 run_test() {
@@ -62,7 +62,7 @@ done
 
 # 2. 知识检索测试
 run_test "知识检索" \
-    "/api/v1/knowledge/search?query=变压器维护&top_k=5" \
+    "/api/v1/knowledge/search?query=服务器维护&top_k=5" \
     "" \
     5
 

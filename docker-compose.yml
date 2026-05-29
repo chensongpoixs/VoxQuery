@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ============================================================
-# 能源行业知识库问答系统 - Docker Compose 编排
+# 知识库问答系统 - Docker Compose 编排
 # GPU 分配：
 #   GPU 0,1 -> Gemma-3 27B (LLM)
 #   GPU 2   -> BGE-M3 (Embedding)
@@ -13,14 +13,14 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: energy-redis
+    container_name: kb-redis
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
-      - energy-net
+      - kb-net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -30,13 +30,13 @@ services:
 
   chromadb:
     image: chromadb/chroma:latest
-    container_name: energy-chromadb
+    container_name: kb-chromadb
     ports:
       - "8004:8000"
     volumes:
       - chroma-data:/chroma/chroma
     networks:
-      - energy-net
+      - kb-net
     environment:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma
@@ -54,14 +54,14 @@ services:
     build:
       context: ./services/llm-service
       dockerfile: Dockerfile
-    container_name: energy-llm
+    container_name: kb-llm
     ports:
       - "8001:8001"
     volumes:
       - ${MODELS_DIR:-./models}/gemma3:/models/gemma3
       - ./services/llm-service/app:/app
     networks:
-      - energy-net
+      - kb-net
     environment:
       - CUDA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES_LLM:-0,1}
       - MODEL_NAME=${LLM_MODEL_NAME:-google/gemma-3-27b-it}
@@ -88,14 +88,14 @@ services:
     build:
       context: ./services/embedding-service
       dockerfile: Dockerfile
-    container_name: energy-embedding
+    container_name: kb-embedding
     ports:
       - "8002:8002"
     volumes:
       - ${MODELS_DIR:-./models}/bge-m3:/models/bge-m3
       - ./services/embedding-service/app:/app
     networks:
-      - energy-net
+      - kb-net
     environment:
       - CUDA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES_EMBEDDING:-2}
       - MODEL_NAME=${EMBEDDING_MODEL_NAME:-BAAI/bge-m3}
@@ -120,14 +120,14 @@ services:
     build:
       context: ./services/asr-service
       dockerfile: Dockerfile
-    container_name: energy-asr
+    container_name: kb-asr
     ports:
       - "8005:8005"
     volumes:
       - ${MODELS_DIR:-./models}/whisper:/models/whisper
       - ./services/asr-service/app:/app
     networks:
-      - energy-net
+      - kb-net
     environment:
       - CUDA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES_ASR_TTS:-3}
       - MODEL_NAME=${ASR_MODEL_NAME:-large-v3}
@@ -152,14 +152,14 @@ services:
     build:
       context: ./services/tts-service
       dockerfile: Dockerfile
-    container_name: energy-tts
+    container_name: kb-tts
     ports:
       - "8006:8006"
     volumes:
       - ${MODELS_DIR:-./models}/cosyvoice2:/models/cosyvoice2
       - ./services/tts-service/app:/app
     networks:
-      - energy-net
+      - kb-net
     environment:
       - CUDA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES_ASR_TTS:-3}
       - DEFAULT_VOICE=${TTS_DEFAULT_VOICE:-default}
@@ -185,19 +185,19 @@ services:
     build:
       context: ./services/rag-service
       dockerfile: Dockerfile
-    container_name: energy-rag
+    container_name: kb-rag
     ports:
       - "8003:8003"
     volumes:
       - ./services/rag-service/app:/app
       - ./knowledge-base/dicts:/app/dicts
     networks:
-      - energy-net
+      - kb-net
     environment:
       - EMBEDDING_SERVICE_URL=http://embedding-service:8002
       - CHROMA_HOST=${CHROMA_HOST:-chromadb}
       - CHROMA_PORT=${CHROMA_PORT:-8004}
-      - CHROMA_COLLECTION=${CHROMA_COLLECTION_NAME:-energy_knowledge}
+      - CHROMA_COLLECTION=${CHROMA_COLLECTION_NAME:-kb_knowledge}
       - TOP_K=${RAG_TOP_K:-5}
       - RERANK_TOP_N=${RAG_RERANK_TOP_N:-3}
       - SIMILARITY_THRESHOLD=${RAG_SIMILARITY_THRESHOLD:-0.65}
@@ -225,14 +225,14 @@ services:
     build:
       context: ./services/api-gateway
       dockerfile: Dockerfile
-    container_name: energy-api-gateway
+    container_name: kb-api-gateway
     ports:
       - "8000:8000"
     volumes:
       - ./services/api-gateway/app:/app
       - ./knowledge-base:/app/knowledge-base
     networks:
-      - energy-net
+      - kb-net
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -273,14 +273,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: energy-frontend
+    container_name: kb-frontend
     ports:
       - "3000:3000"
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
     networks:
-      - energy-net
+      - kb-net
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_WS_URL=ws://localhost:8000
@@ -296,7 +296,7 @@ services:
     restart: unless-stopped
 
 networks:
-  energy-net:
+  kb-net:
     driver: bridge
 
 volumes:

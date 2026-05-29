@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # 服务基本信息
-    project_name: str = "Energy KB Q&A System"
+    project_name: str = "KB Q&A System"
     version: str = "1.0.0"
     environment: str = "development"
     log_level: str = "INFO"

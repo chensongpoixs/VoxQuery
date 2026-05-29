@@ -44,7 +44,7 @@
 
   <!-- ========== 标题栏 ========== -->
   <rect x="0" y="0" width="1200" height="60" fill="url(#headerGrad)"/>
-  <text x="600" y="28" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="bold" font-family="sans-serif">能源行业内部知识库问答系统 + 语音对话助手 — 架构总览</text>
+  <text x="600" y="28" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="bold" font-family="sans-serif">企业内部知识库问答系统 + 语音对话助手 — 架构总览</text>
   <text x="600" y="48" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="sans-serif">ASR → LLM+RAG → TTS 三阶段流水线 | 4×RTX 4090 | 完全私有化部署</text>
 
   <!-- ========== 第一层: 用户交互层 ========== -->

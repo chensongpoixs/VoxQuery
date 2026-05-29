@@ -1,4 +1,4 @@
-"""API Gateway —— 能源行业知识库问答系统入口
+"""API Gateway —— 知识库问答系统入口
 
 功能：
 - 文本/语音对话路由
@@ -63,7 +63,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.project_name,
         version=settings.version,
-        description="面向能源行业的内部业务知识库问答系统 + 语音对话助手",
+        description="企业内部知识库问答系统 + 语音对话助手",
         lifespan=lifespan,
     )
 

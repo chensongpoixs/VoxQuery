@@ -107,7 +107,7 @@ python knowledge-base/scripts/update.py --docs-dir /path/to/docs
 ```
 
 ### 4.2 自定义行业词典
-编辑 `knowledge-base/dicts/energy_terms.txt` 添加行业术语。
+编辑 `knowledge-base/dicts/energy_terms.txt` 添加行业术语（可重命名为您所在行业的词典文件）。
 编辑 `knowledge-base/dicts/synonyms.yaml` 添加同义词映射。
 
 ## 5. 运维操作

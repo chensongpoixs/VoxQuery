@@ -39,7 +39,7 @@ def get_model():
             # 预置音色库
             _voice_registry["default"] = {
                 "name": "默认女声",
-                "description": "专业能源行业播报音色",
+                "description": "专业企业播报音色",
                 "sample_url": None,
             }
             _voice_registry["male_engineer"] = {
@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Energy KB - TTS Service",
+    title="KB - TTS Service",
     version="1.0.0",
     lifespan=lifespan,
 )

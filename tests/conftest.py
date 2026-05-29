@@ -13,32 +13,32 @@ def sample_documents():
     """示例文档数据"""
     return [
         {
-            "text": "变压器的日常巡检项目包括：油温检查、油位检查、声响检查、渗漏检查和套管检查。"
-                    "上层油温不应超过85°C。油位应在油标刻度范围内。",
+            "text": "服务器的日常巡检项目包括：温度检查、风扇状态检查、磁盘健康检查和网络连通性检查。"
+                    "CPU温度不应超过75°C。所有风扇应在正常转速范围内。",
             "metadata": {
                 "doc_id": "test001",
-                "title": "变压器维护手册",
-                "source_file": "test/transformer.md",
+                "title": "服务器维护手册",
+                "source_file": "test/server.md",
                 "chunk_index": 0,
             },
         },
         {
-            "text": "110kV变电站的安全距离不小于1.5米。作业人员必须佩戴安全帽、绝缘鞋、工作服。"
-                    "特种作业人员需持相应特种作业操作证。",
+            "text": "访客进入数据中心需要提前24小时申请访问权限。所有人员必须佩戴工牌、登记身份信息。"
+                    "第三方人员需签署保密协议后方可进入。",
             "metadata": {
                 "doc_id": "test002",
-                "title": "安全操作规程",
+                "title": "安全管理制度",
                 "source_file": "test/safety.md",
                 "chunk_index": 0,
             },
         },
         {
-            "text": "SF6断路器的额定压力为0.6MPa。报警压力为0.52MPa，闭锁压力为0.5MPa。"
-                    "定期检查SF6气体压力，确保在正常范围内。",
+            "text": "防火墙的额定吞吐量为10Gbps。最大并发连接数为200万，新建连接速率为15万/秒。"
+                    "定期检查防火墙规则状态，确保策略在有效期内。",
             "metadata": {
                 "doc_id": "test003",
-                "title": "断路器维护手册",
-                "source_file": "test/breaker.md",
+                "title": "网络设备维护手册",
+                "source_file": "test/firewall.md",
                 "chunk_index": 0,
             },
         },
@@ -50,15 +50,15 @@ def sample_queries():
     """测试查询列表"""
     return [
         {
-            "query": "变压器的巡检项目有哪些？",
-            "expected_keywords": ["油温", "油位", "声响", "渗漏", "套管"],
+            "query": "服务器的巡检项目有哪些？",
+            "expected_keywords": ["温度", "风扇", "磁盘", "网络"],
         },
         {
-            "query": "110kV安全距离是多少？",
-            "expected_keywords": ["1.5", "米"],
+            "query": "数据中心访问权限如何申请？",
+            "expected_keywords": ["24小时", "申请"],
         },
         {
-            "query": "SF6断路器额定压力？",
-            "expected_keywords": ["0.6", "MPa"],
+            "query": "防火墙吞吐量是多少？",
+            "expected_keywords": ["10Gbps", "Gbps"],
         },
     ]

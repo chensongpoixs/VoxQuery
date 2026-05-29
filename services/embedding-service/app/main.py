@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Energy KB - Embedding Service",
+    title="KB - Embedding Service",
     version="1.0.0",
     lifespan=lifespan,
 )

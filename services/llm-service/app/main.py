@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Energy KB - LLM Inference Service",
+    title="KB - LLM Inference Service",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -47,7 +47,7 @@ async def list_models():
             {
                 "id": config.model_name,
                 "object": "model",
-                "owned_by": "energy-kb",
+                "owned_by": "kb-qa",
             }
         ],
     }

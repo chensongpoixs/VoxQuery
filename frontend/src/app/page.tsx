@@ -211,7 +211,7 @@ export default function Home() {
                 <path d="M3 12h18M3 6h18M3 18h18" />
               </svg>
             </button>
-            <h1 className="text-lg font-semibold text-gray-800">能源智库</h1>
+            <h1 className="text-lg font-semibold text-gray-800">智能知识库</h1>
             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
               Beta
             </span>
@@ -237,20 +237,20 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto px-4 py-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              <div className="text-6xl mb-4">⚡</div>
+              <div className="text-6xl mb-4">📚</div>
               <h2 className="text-xl font-semibold text-gray-600 mb-2">
-                能源智库知识助手
+                智能知识库助手
               </h2>
               <p className="text-sm max-w-md text-center">
-                我是您的能源行业知识助手，可以回答业务规范、设备手册、
+                我是您的企业知识助手，可以回答业务规范、操作手册、
                 运维文档等方面的问题。请开始提问。
               </p>
               <div className="mt-6 grid grid-cols-2 gap-2 max-w-lg">
                 {[
-                  '变压器的日常巡检项目有哪些？',
-                  '110kV变电站的安全距离要求？',
-                  'SF6断路器的维护周期？',
-                  '倒闸操作的标准流程？',
+                  '信息安全管理制度的要求有哪些？',
+                  '服务器日常巡检项目是什么？',
+                  '数据安全分级的级别有哪些？',
+                  '应急响应流程怎么执行？',
                 ].map((q) => (
                   <button
                     key={q}

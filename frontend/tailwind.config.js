@@ -14,7 +14,7 @@ module.exports = {
           600: '#2563eb',
           700: '#1d4ed8',
         },
-        energy: {
+        brand: {
           dark: '#1a2332',
           mid: '#2d4a6f',
           light: '#4a90d9',

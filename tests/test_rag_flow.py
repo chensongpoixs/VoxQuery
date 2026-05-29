@@ -64,19 +64,17 @@ class TestDocumentChunker:
         )
         assert len(chunks) == 0
 
-    def test_energy_terms_not_split(self):
-        """确保能源行业术语不被切断"""
+    def test_protected_patterns_not_split(self):
+        """确保受保护的模式（标准编号、产品型号等）不被切断"""
         chunker = DocumentChunker(chunk_size=200, chunk_overlap=0)
-        text = "设备GB/T 12345-2020标准规定了变压器的额定电压为110.5kV，额定容量为50000kVA。"
+        text = "产品型号SRV-20245符合ISO 9001标准，额定功率为220.5W，最大传输速率为10Gbps。"
         chunks = chunker.chunk_text(
-            text, doc_id="test", title="标准", source_file="std.txt",
+            text, doc_id="test", title="规格", source_file="spec.txt",
             strategy="fixed_length",
         )
         # 如果只有一个 chunk，说明保护模式生效了
-        # 如果有多个，检查每个 chunk 的内容
         for chunk in chunks:
             text_content = chunk["text"]
-            # 不应在标准号中间切断（但可能因长度被切）
             print(f"Chunk: {text_content}")
 
 
@@ -85,17 +83,17 @@ class TestSynonymMapper:
 
     def test_normalize(self):
         mapper = SynonymMapper()
-        assert mapper.normalize("主变") == "变压器"
-        assert mapper.normalize("PT") == "互感器"
-        assert mapper.normalize("刀闸") == "隔离开关"
+        assert mapper.normalize("主机") == "服务器"
+        assert mapper.normalize("Firewall") == "防火墙"
+        assert mapper.normalize("巡检") == "巡检"
 
     def test_expand_query(self):
         mapper = SynonymMapper()
-        expanded = mapper.expand_query("主变的巡检项目")
+        expanded = mapper.expand_query("服务器的巡检项目")
         assert len(expanded) >= 1  # 至少有原始查询
-        # 至少包含变压器相关的变体
-        has_variant = any("变压器" in q for q in expanded)
-        assert has_variant, f"扩展的查询中没有找到变压器变体: {expanded}"
+        # 至少包含服务器相关的变体
+        has_variant = any("服务器" in q for q in expanded)
+        assert has_variant, f"扩展的查询中没有找到服务器变体: {expanded}"
 
     def test_unknown_term(self):
         mapper = SynonymMapper()
@@ -114,13 +112,13 @@ class TestReranker:
     def test_rerank_by_score(self):
         reranker = Reranker()
         candidates = [
-            {"id": "1", "text": "变压器油温不应超过85°C", "metadata": {}, "score": 0.9},
-            {"id": "2", "text": "断路器SF6额定压力", "metadata": {}, "score": 0.5},
-            {"id": "3", "text": "安全操作规范", "metadata": {}, "score": 0.7},
+            {"id": "1", "text": "服务器温度不应超过75°C，需定期检查", "metadata": {}, "score": 0.9},
+            {"id": "2", "text": "防火墙配置规范要求", "metadata": {}, "score": 0.5},
+            {"id": "3", "text": "安全操作制度和流程规范", "metadata": {}, "score": 0.7},
             {"id": "4", "text": "其他信息", "metadata": {}, "score": 0.3},
-            {"id": "5", "text": "电缆维护", "metadata": {}, "score": 0.6},
+            {"id": "5", "text": "设备维护", "metadata": {}, "score": 0.6},
         ]
-        results = reranker.rerank("变压器温度", candidates, top_n=3)
+        results = reranker.rerank("服务器温度", candidates, top_n=3)
         assert len(results) == 3
         # 最相关的应该排在前面
         assert results[0]["id"] in ["1", "2", "3"]
@@ -128,9 +126,9 @@ class TestReranker:
     def test_keyword_bonus(self):
         reranker = Reranker()
         candidates = [
-            {"id": "1", "text": "变压器安全操作规程和标准规范", "metadata": {}, "score": 0.6},
+            {"id": "1", "text": "安全操作管理制度和标准规范", "metadata": {}, "score": 0.6},
             {"id": "2", "text": "普通文本内容没有行业术语", "metadata": {}, "score": 0.6},
         ]
-        results = reranker.rerank("安全规程", candidates, top_n=2)
+        results = reranker.rerank("安全操作标准", candidates, top_n=2)
         # 有关键词的应该得分更高
         assert results[0]["id"] == "1"

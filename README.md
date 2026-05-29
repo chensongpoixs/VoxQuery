@@ -1,6 +1,6 @@
-# 能源智库 — 能源行业内部知识库问答系统 + 语音对话助手
+# 智能知识库 — 企业内部知识库问答系统 + 语音对话助手
 
-面向能源行业的**企业内部知识库问答系统**，支持文本和语音两种交互方式。采用 **ASR → LLM+RAG → TTS** 三阶段流水线架构，**数据不出企业、完全私有化部署**。
+面向企业的**内部知识库问答系统**，支持文本和语音两种交互方式。采用 **ASR → LLM+RAG → TTS** 三阶段流水线架构，**数据不出企业、完全私有化部署**。
 
 ![架构图](docs/architecture.svg)
 
@@ -13,7 +13,7 @@
 | 🔒 **私有化部署** | 所有模型和数据部署在企业内部服务器，数据安全可控 |
 | 📚 **RAG 知识问答** | 基于检索增强生成，精准回答私域知识 |
 | 🎤 **语音交互** | 全链路语音对话：录音 → ASR → LLM+RAG → TTS |
-| 🏭 **能源行业定制** | 100+ 行业术语词典、50+ 同义词映射、行业专用 System Prompt |
+| 🏭 **行业深度定制** | 行业术语词典、同义词映射、行业专用 System Prompt，支持自定义配置 |
 | 🖥️ **多 GPU 优化** | 4×RTX 4090 精确分配，张量并行 + INT8 量化 |
 | 📦 **一键部署** | Docker Compose 编排，GPU 绑定，健康检查，异常自动重启 |
 | 💬 **多轮对话** | 上下文记忆、指代消解、对话历史管理 |
@@ -173,7 +173,7 @@ aigic/
 │   └── src/components/              # Chat/Voice/Knowledge/Layout
 │
 ├── knowledge-base/                  # 知识库管理工具
-│   ├── dicts/                       # 能源术语词典 + 同义词映射
+│   ├── dicts/                       # 行业术语词典 + 同义词映射
 │   ├── scripts/                     # 导入/批量/增量更新脚本
 │   └── sample-docs/                 # 示例文档目录
 │
@@ -196,12 +196,12 @@ aigic/
 # 文本问答 (流式 SSE)
 curl -X POST http://localhost:8000/api/v1/chat/stream \
   -H "Content-Type: application/json" \
-  -d '{"message": "变压器的巡检项目有哪些？", "stream": true}'
+  -d '{"message": "服务器的巡检项目有哪些？", "stream": true}'
 
 # 文本问答 (非流式)
 curl -X POST http://localhost:8000/api/v1/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "110kV安全距离是多少？"}'
+  -d '{"message": "数据安全分级的级别有哪些？"}'
 
 # 获取对话列表
 curl http://localhost:8000/api/v1/conversations
@@ -228,11 +228,11 @@ curl -X POST http://localhost:8000/api/v1/voice/chat \
 
 ```bash
 # 语义搜索
-curl "http://localhost:8000/api/v1/knowledge/search?query=变压器维护&top_k=5"
+curl "http://localhost:8000/api/v1/knowledge/search?query=服务器维护&top_k=5"
 
 # 上传文档
 curl -X POST http://localhost:8000/api/v1/knowledge/upload \
-  -F "file=@设备手册.pdf"
+  -F "file=@操作手册.pdf"
 
 # 知识库统计
 curl http://localhost:8000/api/v1/knowledge/stats
@@ -271,10 +271,10 @@ python knowledge-base/scripts/update.py --docs-dir /path/to/docs
 
 编辑 `knowledge-base/dicts/synonyms.yaml` 添加同义词映射：
 ```yaml
-变压器:
-  - 主变
-  - 电力变压器
-  - 配电变压器
+服务器:
+  - 主机
+  - Server
+  - 计算节点
 ```
 
 ## 常用命令

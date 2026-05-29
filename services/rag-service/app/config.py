@@ -11,7 +11,7 @@ class RAGServiceConfig(BaseSettings):
     embedding_service_url: str = "http://embedding-service:8002"
     chroma_host: str = "chromadb"
     chroma_port: int = 8004
-    chroma_collection: str = "energy_knowledge"
+    chroma_collection: str = "kb_knowledge"
 
     # 检索参数
     top_k: int = 5

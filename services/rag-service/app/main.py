@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Energy KB - RAG Service",
+    title="KB - RAG Service",
     version="1.0.0",
     lifespan=lifespan,
 )
