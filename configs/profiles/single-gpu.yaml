@@ -1,14 +1,14 @@
 # ============================================================
-# Profile: 单张 RTX 5080 (24GB) — 全部模型共享单卡
+# Profile: 单张 RTX 5080 (16GB) — 全部模型共享单卡
 # ============================================================
 # Gemma-4 E2B (~2.3B, INT4 <1.5GB) + BGE-M3 (~6GB) +
 # Whisper-large-v3 (~4GB) + CosyVoice2 (~4GB) ≈ 15.5GB
-# 24GB 显存余量充足，可安全共存。
+# 16GB 显存紧张，已调低 batch_size / context_window / gpu_memory_utilization。
 # ============================================================
 
 profile:
   name: single-gpu
-  description: 单张 RTX 5080 (24GB) 部署全部模型，适合开发测试环境
+  description: 单张 RTX 5080 (16GB) 部署全部模型，适合开发测试环境
 
 deployment:
   mode: docker
@@ -17,7 +17,7 @@ gpus:
   count: 1
   models:
     - NVIDIA RTX 5080
-  memory_per_gpu_gb: 24
+  memory_per_gpu_gb: 16
 
 models_dir: ./models
 
@@ -27,15 +27,15 @@ services:
     gpu_device: 0
     tensor_parallel_size: 1
     quantization: int4
-    context_window: 4096
-    max_num_seqs: 2
-    gpu_memory_utilization: 0.85
+    context_window: 2048
+    max_num_seqs: 1
+    gpu_memory_utilization: 0.75
     kv_cache_dtype: auto
 
   embedding:
     model: BAAI/bge-m3
     gpu_device: 0
-    batch_size: 16
+    batch_size: 8
     max_length: 8192
 
   asr:

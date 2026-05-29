@@ -7,7 +7,7 @@
 | Profile | GPU 配置 | 显存 | 适用场景 |
 |---------|---------|------|---------|
 | `multi-gpu` | 4×NVIDIA RTX 4090 (24GB) | 96GB 总 | 生产环境，分布式推理 |
-| `single-gpu` | 1×NVIDIA RTX 5080 (24GB) | 24GB | 开发/测试环境，全模型单卡 |
+| `single-gpu` | 1×NVIDIA RTX 5080 (16GB) | 16GB | 开发/测试环境，全模型单卡 |
 
 **通用要求：**
 
@@ -142,7 +142,7 @@ make config-list
 # 输出：
 #   可用的硬件 Profile:
 #     multi-gpu             — 4×RTX 4090 (24GB×4) 分布式部署，适合生产环境
-#     single-gpu            — 单张 RTX 5080 (24GB) 部署全部模型，适合开发测试环境
+#     single-gpu            — 单张 RTX 5080 (16GB) 部署全部模型，适合开发测试环境
 ```
 
 #### multi-gpu (4×RTX 4090)
@@ -158,7 +158,7 @@ GPU 3   ── ASR + TTS    (Whisper-v3 + CosyVoice2)    ~4GB + ~4GB
 ```
 GPU 0 ── LLM (Gemma-4 E2B, INT4) + Embedding (BGE-M3)
          + ASR (Whisper-v3) + TTS (CosyVoice2)
-         ── 总计 ~15.5GB / 24GB，余量安全
+         ── 总计 ~15.5GB / 16GB，显存紧张，已降参处理
 ```
 
 ### 2.3 配置生成

@@ -74,7 +74,7 @@
 
 | GPU | 服务 | 模型 | 显存占用 |
 |-----|------|------|---------|
-| GPU 0 | 全部服务 | Gemma-4 E2B + BGE-M3 + Whisper-v3 + CosyVoice2 | ~15.5GB / 24GB |
+| GPU 0 | 全部服务 | Gemma-4 E2B + BGE-M3 + Whisper-v3 + CosyVoice2 | ~15.5GB / 16GB |
 
 > 通过 `configs/profiles/*.yaml` 集中管理。运行 `make config-list` 查看所有可用配置。
 
@@ -87,7 +87,7 @@
 - Docker 24+ + Docker Compose 2.20+ (Docker 模式)
 - Python 3.11+ (原生模式)
 - NVIDIA Container Toolkit (Docker 模式)
-- 1×RTX 5080 (24GB) 或 4×RTX 4090 (24GB×4)
+- 1×RTX 5080 (16GB) 或 4×RTX 4090 (24GB×4)
 
 ### 一键部署
 
