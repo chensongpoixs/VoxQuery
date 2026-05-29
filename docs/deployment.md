@@ -491,7 +491,7 @@ sudo systemctl status 'kb-*'
 conda activate VoxQuery
 
 # 确认在项目根目录
-cd /mnt/d/Work/AI/AGIC/aigic
+cd /mnt/d/Work/AI/AGIC/VoxQuery
 
 # 加载环境变量（如已生成）
 test -f .env && set -a; source .env; set +a
@@ -538,34 +538,22 @@ chroma run --host 0.0.0.0 --port 8004 --path ./data/chroma
 
 ```bash
 # 终端 3: LLM Service
-# multi-gpu: CUDA_VISIBLE_DEVICES=0,1  /  single-gpu: CUDA_VISIBLE_DEVICES=0
+# 脚本自动加载项目根目录 .env，根据当前 profile 配置启动参数
 conda activate VoxQuery
-export CUDA_VISIBLE_DEVICES=0,1
-export MODEL_NAME="google/gemma-4-e2b-it"
-export TENSOR_PARALLEL_SIZE=2
-export QUANTIZATION="awq"
-export CONTEXT_WINDOW=8192
-export MAX_NUM_SEQS=4
-export GPU_MEMORY_UTILIZATION=0.90
-export KV_CACHE_DTYPE="fp8"
-export MODEL_PATH="./models/gemma3"
-export PORT=8001
 
+# 单卡/多卡都一样，脚本自动从 .env 读取参数
 bash services/llm-service/scripts/start_vllm.sh
-# 首次启动加载模型约 2 分钟
+# 首次启动加载模型约 3-5 分钟 (WSL2 下更慢)
 # 就绪验证: curl http://localhost:8001/health
 
-# 终端 4: Embedding Service
-# multi-gpu: CUDA_VISIBLE_DEVICES=2  /  single-gpu: CUDA_VISIBLE_DEVICES=0
-conda activate VoxQuery
-export CUDA_VISIBLE_DEVICES=2
-export MODEL_NAME="BAAI/bge-m3"
-export MAX_LENGTH=8192
-export BATCH_SIZE=32
-export PORT=8002
+# 高级：临时覆盖个别参数（不需要改 .env 时）
+# TENSOR_PARALLEL_SIZE=1 QUANTIZATION=none bash services/llm-service/scripts/start_vllm.sh
 
-cd services/embedding-service
-uvicorn app.main:app --host 0.0.0.0 --port 8002 --workers 1
+# 终端 4: Embedding Service
+conda activate VoxQuery
+
+# 脚本同样自动加载 .env，无需手动设置环境变量
+bash services/embedding-service/scripts/start.sh
 # 就绪验证: curl http://localhost:8002/health
 ```
 
@@ -678,18 +666,26 @@ export CUDA_VISIBLE_DEVICES=0
 export MODEL_NAME="google/gemma-4-e2b-it"
 export TENSOR_PARALLEL_SIZE=1
 export QUANTIZATION="int4"
-export CONTEXT_WINDOW=2048
-export MAX_NUM_SEQS=1
-export GPU_MEMORY_UTILIZATION=0.75
+#### 单卡 RTX 5080 (single-gpu) 注意事项
+
+显存仅 16GB，4 个模型共用 GPU 0，参数需收紧：
+
+```bash
+# 生成 single-gpu 配置
+python configs/generate_config.py --profile single-gpu --mode native --force
+
+# 脚本自动加载 .env，直接运行即可
+bash services/llm-service/scripts/start_vllm.sh
+# 当前配置: TP=1, 无量化, context=2048, max_seqs=1, VRAM=0.75
+# 模型: Gemma-4 E2B (~2.3B params, ~9.8 GiB VRAM)
 
 # Embedding: 减小批处理
-export BATCH_SIZE=8
+bash services/embedding-service/scripts/start.sh
 
 # 启动顺序: 先大后小
 # LLM → Embedding → ASR → TTS
 # 如遇 OOM, 按相反顺序逐个停掉排查
 ```
-
 #### 服务速查表
 
 | 服务 | 端口 | GPU (multi) | GPU (single) | 命令 |
@@ -697,7 +693,7 @@ export BATCH_SIZE=8
 | Redis | 6379 | — | — | `redis-server --daemonize yes` |
 | ChromaDB | 8004 | — | — | `chroma run --port 8004` |
 | LLM | 8001 | 0,1 | 0 | `bash services/llm-service/scripts/start_vllm.sh` |
-| Embedding | 8002 | 2 | 0 | `cd services/embedding-service && uvicorn app.main:app` |
+| Embedding | 8002 | 2 | 0 | `bash services/embedding-service/scripts/start.sh` |
 | ASR | 8005 | 3 | 0 | `cd services/asr-service && uvicorn app.main:app --port 8005` |
 | TTS | 8006 | 3 | 0 | `cd services/tts-service && uvicorn app.main:app --port 8006` |
 | RAG | 8003 | — | — | `cd services/rag-service && uvicorn app.main:app --port 8003` |

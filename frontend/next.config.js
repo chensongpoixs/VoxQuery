@@ -1,3 +1,5 @@
+const appConfig = require('./config.js');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -5,7 +7,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/:path*`,
+        destination: `${appConfig.apiUrl}/api/:path*`,
       },
     ];
   },

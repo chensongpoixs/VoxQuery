@@ -11,15 +11,29 @@ if [ -z "$HF_ENDPOINT" ]; then
 fi
 echo "[INFO] HF_ENDPOINT=$HF_ENDPOINT"
 
-MODEL_NAME="${MODEL_NAME:-google/gemma-3-27b-it}"
+# 支持两种变量名风格:
+#   - Docker Compose 映射后的短名 (如 TENSOR_PARALLEL_SIZE)
+#   - .env 文件中的 LLM_* 前缀名 (如 LLM_TENSOR_PARALLEL_SIZE)
+# 自动加载项目根目录的 .env 文件（如果存在）
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    set -a; source "$PROJECT_ROOT/.env"; set +a
+fi
+
+MODEL_NAME="${MODEL_NAME:-${LLM_MODEL_NAME:-google/gemma-3-27b-it}}"
+# Docker 容器内路径 /models/gemma3，原生运行时 $PROJECT_ROOT/models/gemma3
 MODEL_PATH="${MODEL_PATH:-/models/gemma3}"
-TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-2}"
-MAX_TOKENS="${MAX_TOKENS:-2048}"
-QUANTIZATION="${QUANTIZATION:-awq}"
-MAX_CONCURRENT="${MAX_CONCURRENT:-4}"
-GPU_MEMORY_UTIL="${GPU_MEMORY_UTILIZATION:-0.90}"
-CONTEXT_WINDOW="${CONTEXT_WINDOW:-8192}"
-KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-fp8}"
+if [ ! -d "$MODEL_PATH" ] && [ -d "$PROJECT_ROOT/models/gemma3" ]; then
+    MODEL_PATH="$PROJECT_ROOT/models/gemma3"
+fi
+TENSOR_PARALLEL_SIZE=1 # "${TENSOR_PARALLEL_SIZE:-${LLM_TENSOR_PARALLEL_SIZE:-2}}"
+MAX_TOKENS="${MAX_TOKENS:-${LLM_MAX_TOKENS:-2048}}"
+QUANTIZATION="${QUANTIZATION:-${LLM_QUANTIZATION:-awq}}"
+MAX_CONCURRENT="${MAX_CONCURRENT:-${LLM_MAX_CONCURRENT:-4}}"
+GPU_MEMORY_UTIL="${GPU_MEMORY_UTILIZATION:-${LLM_GPU_MEMORY_UTILIZATION:-0.90}}"
+CONTEXT_WINDOW="${CONTEXT_WINDOW:-${LLM_CONTEXT_WINDOW:-8192}}"
+KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-${LLM_KV_CACHE_DTYPE:-fp8}}"
 PORT="${PORT:-8001}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
 
@@ -47,10 +61,18 @@ echo "  HTTP 端口:      $PORT"
 echo "============================================"
 
 # 启动 vLLM OpenAI-compatible API Server
+# RTX 5080 (Blackwell) / WSL 兼容性: 禁用 flashinfer, 使用 PyTorch 原生采样
+QUANT_ARGS=()
+if [ "$QUANTIZATION" != "none" ] && [ "$QUANTIZATION" != "int4" ] && [ "$QUANTIZATION" != "int8" ]; then
+    QUANT_ARGS=(--quantization "$QUANTIZATION")
+fi
+
+export VLLM_USE_FLASHINFER_SAMPLER=0
+
 exec python -m vllm.entrypoints.openai.api_server \
     --model "$MODEL_SOURCE" \
     --tensor-parallel-size "$TENSOR_PARALLEL_SIZE" \
-    --quantization "$QUANTIZATION" \
+    "${QUANT_ARGS[@]}" \
     --max-model-len "$CONTEXT_WINDOW" \
     --max-num-seqs "$MAX_NUM_SEQS" \
     --gpu-memory-utilization "$GPU_MEMORY_UTIL" \
